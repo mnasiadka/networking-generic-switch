@@ -53,7 +53,7 @@ class TestNetmikoCumulusNVUE(test_netmiko_base.NetmikoSwitchTestBase):
         self.switch.plug_port_to_network(3333, 33)
         mock_exec.assert_called_with(
             ['nv set interface 3333 link state up',
-             'nv unset interface 3333 bridge domain br_default access 123',
+             'nv unset interface 3333 bridge domain br_default access',
              'nv set interface 3333 bridge domain br_default access 33'])
 
     @mock.patch('networking_generic_switch.devices.netmiko_devices.'
@@ -93,7 +93,7 @@ class TestNetmikoCumulusNVUE(test_netmiko_base.NetmikoSwitchTestBase):
     def test_delete_port(self, mock_exec):
         self.switch.delete_port(3333, 33)
         mock_exec.assert_called_with(
-            ['nv unset interface 3333 bridge domain br_default access 33',
+            ['nv unset interface 3333 bridge domain br_default access',
              'nv set bridge domain br_default vlan 123',
              'nv set interface 3333 bridge domain br_default access 123',
              'nv set interface 3333 link state down'])
@@ -108,7 +108,7 @@ class TestNetmikoCumulusNVUE(test_netmiko_base.NetmikoSwitchTestBase):
         })
         switch.delete_port(3333, 33)
         mock_exec.assert_called_with(
-            ['nv unset interface 3333 bridge domain br_default access 33'])
+            ['nv unset interface 3333 bridge domain br_default access'])
 
     @mock.patch('networking_generic_switch.devices.netmiko_devices.'
                 'NetmikoSwitch.send_commands_to_device',
@@ -116,11 +116,9 @@ class TestNetmikoCumulusNVUE(test_netmiko_base.NetmikoSwitchTestBase):
     def test_plug_bond_to_network(self, mock_exec):
         self.switch.plug_bond_to_network(3333, 33)
         mock_exec.assert_called_with(
-            ['nv set interface bond 3333 link state up',
-             'nv unset interface bond 3333 bridge domain br_default '
-             'access 123',
-             'nv set interface bond 3333 bridge domain br_default '
-             'access 33'])
+            ['nv set interface 3333 link state up',
+             'nv unset interface 3333 bridge domain br_default access',
+             'nv set interface 3333 bridge domain br_default access 33'])
 
     @mock.patch('networking_generic_switch.devices.netmiko_devices.'
                 'NetmikoSwitch.send_commands_to_device',
@@ -132,8 +130,7 @@ class TestNetmikoCumulusNVUE(test_netmiko_base.NetmikoSwitchTestBase):
         })
         switch.plug_bond_to_network(3333, 33)
         mock_exec.assert_called_with(
-            ['nv set interface bond 3333 bridge domain br_default '
-             'access 33'])
+            ['nv set interface 3333 bridge domain br_default access 33'])
 
     @mock.patch('networking_generic_switch.devices.netmiko_devices.'
                 'NetmikoSwitch.send_commands_to_device',
@@ -141,12 +138,10 @@ class TestNetmikoCumulusNVUE(test_netmiko_base.NetmikoSwitchTestBase):
     def test_unplug_bond_from_network(self, mock_exec):
         self.switch.unplug_bond_from_network(3333, 33)
         mock_exec.assert_called_with(
-            ['nv unset interface bond 3333 bridge domain br_default '
-             'access 33',
+            ['nv unset interface 3333 bridge domain br_default access',
              'nv set bridge domain br_default vlan 123',
-             'nv set interface bond 3333 bridge domain br_default '
-             'access 123',
-             'nv set interface bond 3333 link state down'])
+             'nv set interface 3333 bridge domain br_default access 123',
+             'nv set interface 3333 link state down'])
 
     @mock.patch('networking_generic_switch.devices.netmiko_devices.'
                 'NetmikoSwitch.send_commands_to_device',
@@ -158,8 +153,7 @@ class TestNetmikoCumulusNVUE(test_netmiko_base.NetmikoSwitchTestBase):
         })
         switch.unplug_bond_from_network(3333, 33)
         mock_exec.assert_called_with(
-            ['nv unset interface bond 3333 bridge domain br_default '
-             'access 33'])
+            ['nv unset interface 3333 bridge domain br_default access'])
 
     def test_save(self):
         mock_connect = mock.MagicMock()

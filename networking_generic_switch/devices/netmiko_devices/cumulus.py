@@ -122,8 +122,7 @@ class CumulusNVUE(netmiko_devices.NetmikoSwitch):
     ]
 
     DELETE_PORT = [
-        'nv unset interface {port} bridge domain br_default access '
-        '{segmentation_id}',
+        'nv unset interface {port} bridge domain br_default access',
     ]
 
     ENABLE_PORT = [
@@ -147,6 +146,7 @@ class CumulusNVUE(netmiko_devices.NetmikoSwitch):
         re.compile(r'ERROR: Command not found.'),
         re.compile(r'command not found'),
         re.compile(r'is not a physical interface on this switch'),
+        re.compile(r'Error: Invalid parameter'),
     ]
 
     def send_config_set(self, net_connect, cmd_set):
@@ -158,6 +158,8 @@ class CumulusNVUE(netmiko_devices.NetmikoSwitch):
         """
         cmd_set.append('nv config apply --assume-yes')
         net_connect.enable()
+        # NOTE: Do not exit config mode because save needs elevated
+        # privileges
         return net_connect.send_config_set(config_commands=cmd_set,
                                            cmd_verify=False,
                                            exit_config_mode=False)
