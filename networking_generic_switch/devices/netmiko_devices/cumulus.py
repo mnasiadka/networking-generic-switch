@@ -147,6 +147,8 @@ class CumulusNVUE(netmiko_devices.NetmikoSwitch):
         re.compile(r'command not found'),
         re.compile(r'is not a physical interface on this switch'),
         re.compile(r'Error: Invalid parameter'),
+        re.compile(r'Unable to restart services'),
+        re.compile(r'Failure during apply'),
     ]
 
     def send_config_set(self, net_connect, cmd_set):
