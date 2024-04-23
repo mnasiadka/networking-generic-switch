@@ -177,4 +177,5 @@ class CumulusNVUE(netmiko_devices.NetmikoSwitch):
         cmd_set.append('nv config apply')
         net_connect.enable()
         return net_connect.send_config_set(config_commands=cmd_set,
-                                           cmd_verify=False)
+                                           cmd_verify=False,
+                                           exit_config_mode=False)
