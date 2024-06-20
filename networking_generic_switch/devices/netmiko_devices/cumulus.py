@@ -144,14 +144,6 @@ class CumulusNVUE(netmiko_devices.NetmikoSwitch):
         'nv set interface {port} link state down',
     ]
 
-    ENABLE_BOND = [
-        'nv set interface bond {bond} link state up',
-    ]
-
-    DISABLE_BOND = [
-        'nv set interface bond {bond} link state down',
-    ]
-
     SAVE_CONFIGURATION = [
         'nv config save',
     ]
