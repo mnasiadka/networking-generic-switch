@@ -126,16 +126,6 @@ class CumulusNVUE(netmiko_devices.NetmikoSwitch):
         '{segmentation_id}',
     ]
 
-    PLUG_BOND_TO_NETWORK = [
-        'nv set interface bond {bond} bridge domain br_default access '
-        '{segmentation_id}',
-    ]
-
-    UNPLUG_BOND_FROM_NETWORK = [
-        'nv unset interface bond {bond} bridge domain br_default access '
-        '{segmentation_id}',
-    ]
-
     ENABLE_PORT = [
         'nv set interface {port} link state up',
     ]
