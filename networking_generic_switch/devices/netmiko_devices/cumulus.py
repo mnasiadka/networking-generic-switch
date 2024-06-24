@@ -156,7 +156,7 @@ class CumulusNVUE(netmiko_devices.NetmikoSwitch):
         :param cmd_set: a list of configuration lines to send.
         :returns: The output of the configuration commands.
         """
-        cmd_set.append('nv config apply')
+        cmd_set.append('nv config apply --assume-yes')
         net_connect.enable()
         return net_connect.send_config_set(config_commands=cmd_set,
                                            cmd_verify=False,
