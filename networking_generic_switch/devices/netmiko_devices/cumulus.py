@@ -137,6 +137,16 @@ class CumulusNVUE(netmiko_devices.NetmikoSwitch):
         'nv config save',
     ]
 
+    SET_NATIVE_VLAN = [
+        'nv unset interface {port} bridge domain br_default access',
+        'nv set interface {port} bridge domain br_default untagged {segmentation_id}',
+        'nv set interface {port} bridge domain br_default vlan {segmentation_id}'
+    ]
+
+    ALLOW_NETWORK_ON_TRUNK = [
+        'nv set interface {port} bridge domain br_default vlan {segmentation_id}'
+    ]
+
     ERROR_MSG_PATTERNS = [
         # Its tempting to add this error message, but as only one
         # bridge-access is allowed, we ignore that error for now:
