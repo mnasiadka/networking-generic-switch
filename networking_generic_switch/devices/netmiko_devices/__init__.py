@@ -284,6 +284,17 @@ class NetmikoSwitch(devices.GenericSwitchDevice):
     def plug_port_to_network_trunk(self, port, segmentation_id,
                                    trunk_details=None, vtr=False):
         cmd_set = []
+
+        if self._disable_inactive_ports() and self.ENABLE_PORT:
+            cmd_set.extend(self._format_commands(self.ENABLE_PORT, port=port))
+
+        ngs_port_default_vlan = self._get_port_default_vlan()
+        if ngs_port_default_vlan:
+            cmd_set.extend(self._format_commands(
+                self.DELETE_PORT,
+                port=port,
+                segmentation_id=ngs_port_default_vlan))
+
         vts = self.ngs_config.get('vlan_translation_supported', False)
         # NOTE(vsaienko) Always use vlan translation if it is supported.
         if vts:
@@ -448,8 +459,11 @@ class NetmikoSwitch(devices.GenericSwitchDevice):
                                                 segmentation_id,
                                                 trunk_details):
         cmd_set = []
+<<<<<<< HEAD
         if self._disable_inactive_ports() and self.ENABLE_PORT:
             cmd_set.extend(self._format_commands(self.ENABLE_PORT, port=port))
+=======
+>>>>>>> 1f4227f (Add vlan aware VMs support)
         cmd_set.extend(
             self._format_commands(self.SET_NATIVE_VLAN,
                                   port=port_id,

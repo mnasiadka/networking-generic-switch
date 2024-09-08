@@ -144,7 +144,8 @@ class CumulusNVUE(netmiko_devices.NetmikoSwitch):
     ]
 
     ALLOW_NETWORK_ON_TRUNK = [
-        'nv set interface {port} bridge domain br_default vlan {segmentation_id}'
+        'nv set interface {port} bridge domain br_default vlan '
+        '{segmentation_id}'
     ]
 
     ERROR_MSG_PATTERNS = [
