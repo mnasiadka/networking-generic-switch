@@ -106,7 +106,7 @@ class CumulusNVUE(netmiko_devices.NetmikoSwitch):
     ngs_port_default_vlan = 123
     ngs_disable_inactive_ports = False
     """
-    NETMIKO_DEVICE_TYPE = "generic"
+    NETMIKO_DEVICE_TYPE = "linux"
 
     ADD_NETWORK = [
         'nv set bridge domain br_default vlan {segmentation_id}',
@@ -173,7 +173,9 @@ class CumulusNVUE(netmiko_devices.NetmikoSwitch):
         config_detach = ['nv config detach']
         cmd_set = config_detach + cmd_set
         cmd_set.append('nv config apply --assume-yes')
+        net_connect.enable()
+        # NOTE: Do not exit config mode because save needs elevated
+        # privileges
         return net_connect.send_config_set(config_commands=cmd_set,
                                            cmd_verify=False,
-                                           enter_config_mode=False,
                                            exit_config_mode=False)
