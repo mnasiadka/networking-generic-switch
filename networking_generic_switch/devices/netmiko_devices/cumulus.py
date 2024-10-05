@@ -178,4 +178,5 @@ class CumulusNVUE(netmiko_devices.NetmikoSwitch):
         # privileges
         return net_connect.send_config_set(config_commands=cmd_set,
                                            cmd_verify=False,
+                                           enter_config_mode=False,
                                            exit_config_mode=False)
