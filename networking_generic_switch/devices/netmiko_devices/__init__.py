@@ -459,9 +459,6 @@ class NetmikoSwitch(devices.GenericSwitchDevice):
                                                 segmentation_id,
                                                 trunk_details):
         cmd_set = []
-        if self._disable_inactive_ports() and self.ENABLE_PORT:
-            cmd_set.extend(self._format_commands(self.ENABLE_PORT, port=port))
-
         cmd_set.extend(
             self._format_commands(self.SET_NATIVE_VLAN,
                                   port=port_id,
