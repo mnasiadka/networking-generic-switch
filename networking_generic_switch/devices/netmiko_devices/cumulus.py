@@ -123,6 +123,8 @@ class CumulusNVUE(netmiko_devices.NetmikoSwitch):
 
     DELETE_PORT = [
         'nv unset interface {port} bridge domain br_default access',
+        'nv unset interface {port} bridge domain br_default untagged',
+        'nv unset interface {port} bridge domain br_default vlan',
     ]
 
     ENABLE_PORT = [
@@ -139,12 +141,19 @@ class CumulusNVUE(netmiko_devices.NetmikoSwitch):
 
     SET_NATIVE_VLAN = [
         'nv unset interface {port} bridge domain br_default access',
-        'nv set interface {port} bridge domain br_default untagged {segmentation_id}',
-        'nv set interface {port} bridge domain br_default vlan {segmentation_id}'
+        'nv set interface {port} bridge domain br_default untagged '
+        '{segmentation_id}',
+        'nv set interface {port} bridge domain br_default vlan '
+        '{segmentation_id}'
     ]
 
     ALLOW_NETWORK_ON_TRUNK = [
         'nv set interface {port} bridge domain br_default vlan '
+        '{segmentation_id}'
+    ]
+
+    REMOVE_NETWORK_FROM_TRUNK = [
+        'nv unset interface {port} bridge domain br_default vlan '
         '{segmentation_id}'
     ]
 

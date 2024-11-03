@@ -282,7 +282,7 @@ class NetmikoSwitch(devices.GenericSwitchDevice):
 
     @check_output('plug port trunk')
     def plug_port_to_network_trunk(self, port, segmentation_id,
-                                   trunk_details=None, vtr=False):
+                                   trunk_details=None):
         cmd_set = []
 
         if self._disable_inactive_ports() and self.ENABLE_PORT:
@@ -295,21 +295,27 @@ class NetmikoSwitch(devices.GenericSwitchDevice):
                 port=port,
                 segmentation_id=ngs_port_default_vlan))
 
-        vts = self.ngs_config.get('vlan_translation_supported', False)
-        # NOTE(vsaienko) Always use vlan translation if it is supported.
-        if vts:
-            cmd_set.extend(self.get_trunk_port_cmds_vlan_translation(
+        cmd_set.extend(
+            self.get_trunk_port_cmds(
                 port, segmentation_id, trunk_details))
-        else:
-            if vtr:
-                msg = ("Cannot bind_port VLAN aware port as switch %s "
-                       "doesn't support VLAN translation. "
-                       "But it is required.") % self.config['ip']
-                raise exc.GenericSwitchNotSupported(error=msg)
-            else:
-                cmd_set.extend(
-                    self.get_trunk_port_cmds_no_vlan_translation(
-                        port, segmentation_id, trunk_details))
+
+        self.send_commands_to_device(cmd_set)
+
+    @check_output('plug subport trunk')
+    def plug_subport_to_network_trunk(self, port_id, segmentation_id):
+        cmd_set = []
+
+        cmd_set.extend(
+            self.get_trunk_subport_add_cmds(port_id, segmentation_id))
+
+        self.send_commands_to_device(cmd_set)
+
+    @check_output('unplug subport trunk')
+    def unplug_subport_from_network_trunk(self, port_id, segmentation_id):
+        cmd_set = []
+
+        cmd_set.extend(self.get_trunk_subport_del_cmds(
+                       port_id, segmentation_id))
 
         self.send_commands_to_device(cmd_set)
 
@@ -455,9 +461,7 @@ class NetmikoSwitch(devices.GenericSwitchDevice):
                     config=device_utils.sanitise_config(self.config),
                     error=msg)
 
-    def get_trunk_port_cmds_no_vlan_translation(self, port_id,
-                                                segmentation_id,
-                                                trunk_details):
+    def get_trunk_port_cmds(self, port_id, segmentation_id, trunk_details):
         cmd_set = []
         cmd_set.extend(
             self._format_commands(self.SET_NATIVE_VLAN,
@@ -470,6 +474,18 @@ class NetmikoSwitch(devices.GenericSwitchDevice):
                     segmentation_id=sub_port['segmentation_id']))
         return cmd_set
 
-    def get_trunk_port_cmds_vlan_translation(self, port_id, segmentation_id,
-                                             trunk_details):
-        pass
+    def get_trunk_subport_add_cmds(self, port_id, segmentation_id):
+        cmd_set = []
+        cmd_set.extend(
+            self._format_commands(
+                self.ALLOW_NETWORK_ON_TRUNK, port=port_id,
+                segmentation_id=segmentation_id))
+        return cmd_set
+
+    def get_trunk_subport_del_cmds(self, port_id, segmentation_id):
+        cmd_set = []
+        cmd_set.extend(
+            self._format_commands(
+                self.REMOVE_NETWORK_FROM_TRUNK, port=port_id,
+                segmentation_id=segmentation_id))
+        return cmd_set

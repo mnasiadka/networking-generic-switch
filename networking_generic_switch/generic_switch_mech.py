@@ -15,20 +15,32 @@
 import sys
 
 from neutron.db import provisioning_blocks
+from neutron.objects.network import NetworkSegment
+from neutron.objects.ports import Port
 from neutron_lib.api.definitions import portbindings
 from neutron_lib.callbacks import resources
 from neutron_lib import constants as const
 from neutron_lib.plugins.ml2 import api
+from neutron_lib.services.trunk import constants as trunk_consts
 from oslo_log import log as logging
 
 from networking_generic_switch import config as gsw_conf
 from networking_generic_switch import devices
 from networking_generic_switch.devices import utils as device_utils
 from networking_generic_switch import exceptions as ngs_exc
+from networking_generic_switch import trunk_driver
 
 LOG = logging.getLogger(__name__)
 
 GENERIC_SWITCH_ENTITY = 'GENERICSWITCH'
+
+SUPPORTED_INTERFACES = (
+    portbindings.VIF_TYPE_OTHER,
+)
+
+SUPPORTED_SEGMENTATION_TYPES = (
+    trunk_consts.SEGMENTATION_TYPE_VLAN,
+)
 
 
 class GenericSwitchDriver(api.MechanismDriver):
@@ -53,6 +65,8 @@ class GenericSwitchDriver(api.MechanismDriver):
         LOG.info('Devices %s have been loaded', self.switches.keys())
         if not self.switches:
             LOG.error('No devices have been loaded')
+
+        self.trunk_driver = trunk_driver.GenericSwitchTrunkDriver.create(self)
 
     def create_network_precommit(self, context):
         """Allocate resources for a new network.
@@ -341,6 +355,7 @@ class GenericSwitchDriver(api.MechanismDriver):
         state. It is up to the mechanism driver to ignore state or
         state changes that it does not know or care about.
         """
+        original_port = context.original
         port = context.current
         network = context.network.current
         if self._is_port_bound(port):
@@ -373,6 +388,7 @@ class GenericSwitchDriver(api.MechanismDriver):
                 # If segmentation ID is None, set vlan 1
                 segmentation_id = network.get('provider:segmentation_id') or 1
                 trunk_details = port.get('trunk_details', {})
+                trunk_subport = port.get('device_owner', {}) == trunk_consts.TRUNK_SUBPORT_OWNER
                 LOG.debug("Putting switch port %(switch_port)s on "
                           "%(switch_info)s in vlan %(segmentation_id)s",
                           {'switch_port': port_id, 'switch_info': switch_info,
@@ -380,9 +396,12 @@ class GenericSwitchDriver(api.MechanismDriver):
                 # Move port to network
                 try:
                     if trunk_details:
-                        vtr = self._is_vlan_translation_required(trunk_details)
+                        self.trunk_driver.bind_port(port)
                         switch.plug_port_to_network_trunk(
-                            port_id, segmentation_id, trunk_details, vtr)
+                            port_id, segmentation_id, trunk_details)
+                    elif trunk_subport:
+                        switch.plug_subport_to_network_trunk(
+                            port_id, segmentation_id)
                     elif (is_802_3ad
                             and hasattr(switch, 'plug_bond_to_network')):
                         switch.plug_bond_to_network(port_id, segmentation_id)
@@ -410,12 +429,11 @@ class GenericSwitchDriver(api.MechanismDriver):
             provisioning_blocks.provisioning_complete(
                 context._plugin_context, port['id'], resources.PORT,
                 GENERIC_SWITCH_ENTITY)
-        elif self._is_port_bound(context.original):
+        elif self._is_port_bound(original_port):
             # The port has been unbound. This will cause the local link
             # information to be lost, so remove the port from the network on
             # the switch now while we have the required information.
-            self._unplug_port_from_network(context.original,
-                                           context.network.current)
+            self._unplug_port_from_network(original_port, network)
 
     def delete_port_precommit(self, context):
         """Delete resources of a port.
@@ -445,14 +463,6 @@ class GenericSwitchDriver(api.MechanismDriver):
         port = context.current
         if self._is_port_bound(port):
             self._unplug_port_from_network(port, context.network.current)
-
-    def _is_vlan_translation_required(self, trunk_details):
-        """Check if vlan translation is required to configure specific trunk.
-
-        :returns: True if vlan translation is required, False otherwise.
-        """
-        # FIXME: removed for simplicity
-        return False
 
     def bind_port(self, context):
         """Attempt to bind a port.
@@ -501,11 +511,12 @@ class GenericSwitchDriver(api.MechanismDriver):
         binding_profile = port['binding:profile']
         local_link_information = binding_profile.get('local_link_information')
 
-        if self._is_port_supported(port) and local_link_information:
-            # NOTE(jamesdenton): If any link of the port is invalid, none
-            # of the links should be processed.
-            if not self._is_link_valid(port, network):
-                return
+        if self._is_port_supported(port):
+            if local_link_information:
+                # NOTE(jamesdenton): If any link of the port is invalid, none
+                # of the links should be processed.
+                if not self._is_link_valid(port, network):
+                    return
 
             segments = context.segments_to_bind
             context.set_binding(segments[0][api.ID],
@@ -582,7 +593,7 @@ class GenericSwitchDriver(api.MechanismDriver):
             return False
 
         vif_type = port[portbindings.VIF_TYPE]
-        return vif_type == portbindings.VIF_TYPE_OTHER
+        return vif_type == portbindings.VIF_TYPE_OTHER or vif_type == portbindings.VIF_TYPE_OVS
 
     @staticmethod
     def _is_802_3ad(port):
@@ -626,12 +637,17 @@ class GenericSwitchDriver(api.MechanismDriver):
             port_id = link.get('port_id')
             # If segmentation ID is None, set vlan 1
             segmentation_id = network.get('provider:segmentation_id') or 1
+            trunk_subport = port.get('device_owner', {}) == trunk_consts.TRUNK_SUBPORT_OWNER
             LOG.debug("Unplugging port %(port)s on %(switch_info)s from vlan: "
                       "%(segmentation_id)s",
                       {'port': port_id, 'switch_info': switch_info,
                        'segmentation_id': segmentation_id})
             try:
-                if is_802_3ad and hasattr(switch, 'unplug_bond_from_network'):
+                if trunk_subport:
+                    switch.unplug_subport_from_network_trunk(
+                        port_id, segmentation_id)
+                elif (is_802_3ad
+                        and hasattr(switch, 'unplug_bond_from_network')):
                     switch.unplug_bond_from_network(port_id, segmentation_id)
                 else:
                     switch.delete_port(port_id, segmentation_id)
@@ -660,3 +676,51 @@ class GenericSwitchDriver(api.MechanismDriver):
             # follow the old behaviour of mapping all networks to it.
             if not physnets or physnet in physnets:
                 yield switch_name, switch
+
+    def subport_create(self, parent_id, subport_id, db):
+        # set the correct state on port in the case where it has subports.
+
+        parent_port = Port.get_object(db, id=parent_id)
+        LOG.info(f"NGS: subport_create {parent_port}")
+        # If the parent port has been deleted then that delete will handle
+        # removing the trunked vlans on the switch using the mac
+        if not parent_port:
+            LOG.debug('Discarding attempt to ensure subports on a parent'
+                      'that has been deleted')
+            return
+
+        local_link_information = parent_port.bindings[0].profile.get(
+            'local_link_information')
+        if local_link_information:
+            for link in local_link_information:
+                port_id = link.get('port_id')
+                switch_info = link.get('switch_info')
+                switch_id = link.get('switch_id')
+                switch = device_utils.get_switch_device(
+                    self.switches, switch_info=switch_info,
+                    ngs_mac_address=switch_id)
+                #switch.plug_subport_to_network_trunk(port_id, subport_id)
+
+    def subport_delete(self, parent_id, subport_id, db):
+        # set the correct state on port in the case where it has subports.
+
+        parent_port = Port.get_object(db, id=parent_id)
+        LOG.info(f"NGS: subport_delete {parent_port}")
+        # If the parent port has been deleted then that delete will handle
+        # removing the trunked vlans on the switch using the mac
+        if not parent_port:
+            LOG.debug('Discarding attempt to ensure subports on a parent'
+                      'that has been deleted')
+            return
+
+        local_link_information = parent_port.bindings[0].profile.get(
+            'local_link_information')
+        if local_link_information:
+            for link in local_link_information:
+                port_id = link.get('port_id')
+                switch_info = link.get('switch_info')
+                switch_id = link.get('switch_id')
+                switch = device_utils.get_switch_device(
+                    self.switches, switch_info=switch_info,
+                    ngs_mac_address=switch_id)
+                #switch.unplug_subport_to_network_trunk(port_id, subport_id)

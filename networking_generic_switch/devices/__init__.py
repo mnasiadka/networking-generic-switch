@@ -46,7 +46,6 @@ NGS_INTERNAL_OPTS = [
     {'name': 'ngs_network_name_format', 'default': '{network_id}'},
     # If false, ngs will not add and delete VLANs from switches
     {'name': 'ngs_manage_vlans', 'default': True},
-    {'name': 'vlan_translation_supported', 'default': False},
     # If False, ngs will skip saving configuration on devices
     {'name': 'ngs_save_configuration', 'default': True},
     # When true try to batch up in flight switch requests
@@ -189,7 +188,7 @@ class GenericSwitchDevice(object, metaclass=abc.ABCMeta):
         pass
 
     def plug_port_to_network_trunk(self, port_id, segmentation_id,
-                                   trunk_details=None, vtr=False):
+                                   trunk_details=None):
         pass
 
     @abc.abstractmethod
